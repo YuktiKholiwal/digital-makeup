@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CATEGORIES, Box } from "@/lib/catalog";
 import { Button, ShadeDot, inputClass } from "./ui";
 
@@ -35,7 +35,19 @@ type PhotoResult = {
 
 type Row = Detection & { source: string | null; include: boolean };
 
+type PhotoState = {
+  name: string;
+  state: "reading" | "done" | "error";
+  found: number;
+  error: string | null;
+};
+
 const MAX_PHOTOS = 12;
+
+function isImage(file: File) {
+  // HEIC files sometimes arrive with an empty MIME type, so fall back to extension.
+  return file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name);
+}
 
 export default function ScanStudio() {
   const router = useRouter();
@@ -43,13 +55,20 @@ export default function ScanStudio() {
 
   const [queue, setQueue] = useState<{ file: File; url: string }[]>([]);
   const [rows, setRows] = useState<Row[] | null>(null);
-  const [photoErrors, setPhotoErrors] = useState<string[]>([]);
+  const [photoStates, setPhotoStates] = useState<PhotoState[]>([]);
+  const [elapsed, setElapsed] = useState(0);
   const [status, setStatus] = useState<"idle" | "scanning" | "filing">("idle");
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  useEffect(() => {
+    if (status !== "scanning") return;
+    const id = setInterval(() => setElapsed((seconds) => seconds + 1), 1000);
+    return () => clearInterval(id);
+  }, [status]);
+
   const addFiles = useCallback((files: FileList | File[]) => {
-    const images = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    const images = Array.from(files).filter(isImage);
     if (images.length === 0) return;
     setQueue((previous) =>
       [...previous, ...images.map((file) => ({ file, url: URL.createObjectURL(file) }))].slice(
@@ -67,38 +86,60 @@ export default function ScanStudio() {
     });
   }
 
+  /**
+   * One request per photo, fired together. The server would happily take them in
+   * a single request, but then nothing is known until the slowest one lands —
+   * this way each photo reports as it finishes and its items appear immediately.
+   */
   async function scan() {
     if (queue.length === 0) return;
     setStatus("scanning");
     setError(null);
-    setPhotoErrors([]);
+    setElapsed(0);
+    setRows([]);
+    setPhotoStates(
+      queue.map((entry) => ({ name: entry.file.name, state: "reading", found: 0, error: null }))
+    );
 
-    try {
-      const form = new FormData();
-      for (const entry of queue) form.append("photos", entry.file);
-
-      const response = await fetch("/api/scan", { method: "POST", body: form });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "The scan failed.");
-
-      const results = data.results as PhotoResult[];
-      setPhotoErrors(
-        results.filter((r) => r.error).map((r) => `${r.photo || "photo"}: ${r.error}`)
+    const mark = (index: number, patch: Partial<PhotoState>) =>
+      setPhotoStates((previous) =>
+        previous.map((photo, i) => (i === index ? { ...photo, ...patch } : photo))
       );
-      setRows(
-        results.flatMap((result) =>
-          result.detections.map((detection) => ({
-            ...detection,
-            source: result.source,
-            include: true,
-          }))
-        )
-      );
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The scan failed.");
-    } finally {
-      setStatus("idle");
-    }
+
+    await Promise.all(
+      queue.map(async (entry, index) => {
+        const form = new FormData();
+        form.append("photos", entry.file);
+        try {
+          const response = await fetch("/api/scan", { method: "POST", body: form });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error ?? "The scan failed.");
+
+          const result = (data.results as PhotoResult[])[0];
+          if (result.error) {
+            mark(index, { state: "error", error: result.error });
+            return;
+          }
+
+          setRows((previous) => [
+            ...(previous ?? []),
+            ...result.detections.map((detection) => ({
+              ...detection,
+              source: result.source,
+              include: true,
+            })),
+          ]);
+          mark(index, { state: "done", found: result.detections.length });
+        } catch (caught) {
+          mark(index, {
+            state: "error",
+            error: caught instanceof Error ? caught.message : "The scan failed.",
+          });
+        }
+      })
+    );
+
+    setStatus("idle");
   }
 
   async function fileItems() {
@@ -152,26 +193,31 @@ export default function ScanStudio() {
   }
 
   const chosenCount = rows?.filter((row) => row.include).length ?? 0;
+  const scanning = status === "scanning";
+  const reading = photoStates.filter((p) => p.state === "reading").length;
+  const failed = photoStates.filter((p) => p.state === "error");
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-ground/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-5 py-3.5">
+      <header className="sticky top-0 z-30 border-b border-line/70 bg-ground/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-5 py-4 sm:px-8">
           <Link href="/" className="display text-[26px] leading-none">
             Vanity
           </Link>
           <span className="caps">Add items</span>
-          <Link href="/" className="ml-auto text-sm text-ink-soft transition hover:text-ink">
+          <Link href="/" className="ml-auto text-sm text-ink-soft transition-colors hover:text-ink">
             Back to collection
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-5 py-8">
-        {!rows ? (
+      <main className="mx-auto max-w-5xl px-5 py-8 sm:px-8 sm:py-12">
+        {rows === null ? (
           <>
-            <h1 className="display text-[34px] leading-tight sm:text-[40px]">Photograph your collection</h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-soft">
+            <h1 className="display text-[34px] leading-tight sm:text-[40px]">
+              Photograph your collection
+            </h1>
+            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-soft">
               Lay items out on a plain surface with labels facing up — a whole drawer per photo is
               fine. Each item gets identified, cropped out of the photo, and filed into its own
               folder.
@@ -189,11 +235,11 @@ export default function ScanStudio() {
                 addFiles(event.dataTransfer.files);
               }}
               onClick={() => fileInput.current?.click()}
-              className={`mt-7 cursor-pointer rounded-[var(--radius-card)] border-2 border-dashed px-6 py-16 text-center transition ${
+              className={`mt-7 cursor-pointer rounded-[var(--radius-card)] border-2 border-dashed px-6 py-16 text-center transition-colors duration-200 ${
                 dragging ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-accent/60"
               }`}
             >
-              <p className="display text-2xl">Drop photos here</p>
+              <p className="display text-[26px]">Drop photos here</p>
               <p className="mt-2 text-sm text-ink-soft">
                 or click to choose · up to {MAX_PHOTOS} at a time
               </p>
@@ -242,7 +288,7 @@ export default function ScanStudio() {
                           event.stopPropagation();
                           removeFromQueue(index);
                         }}
-                        className="absolute top-1.5 right-1.5 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white opacity-0 transition group-hover:opacity-100"
+                        className="absolute top-1.5 right-1.5 rounded-full bg-ink/70 px-2 py-0.5 text-xs text-ground opacity-0 transition-opacity group-hover:opacity-100"
                       >
                         ×
                       </button>
@@ -250,16 +296,9 @@ export default function ScanStudio() {
                   ))}
                 </div>
 
-                <Button onClick={scan} disabled={status === "scanning"} className="mt-7 px-6 py-3.5">
-                  {status === "scanning"
-                    ? `Reading ${queue.length} photo${queue.length === 1 ? "" : "s"}…`
-                    : `Identify items in ${queue.length} photo${queue.length === 1 ? "" : "s"}`}
+                <Button onClick={scan} className="mt-7 px-6 py-3.5">
+                  {`Identify items in ${queue.length} photo${queue.length === 1 ? "" : "s"}`}
                 </Button>
-                {status === "scanning" && (
-                  <p className="mt-3 text-sm text-ink-soft">
-                    Claude is reading the labels. Busy photos take a little longer.
-                  </p>
-                )}
               </>
             )}
           </>
@@ -268,41 +307,104 @@ export default function ScanStudio() {
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <h1 className="display text-[34px] leading-tight sm:text-[40px]">
-                  Found {rows.length} item{rows.length === 1 ? "" : "s"}
+                  {scanning
+                    ? `Reading ${photoStates.length} photo${photoStates.length === 1 ? "" : "s"}…`
+                    : `Found ${rows.length} item${rows.length === 1 ? "" : "s"}`}
                 </h1>
-                <p className="mt-2 text-sm text-ink-soft">
-                  Fix anything Claude misread, then file them. Low-confidence reads are flagged.
+                <p className="mt-2 text-[15px] text-ink-soft">
+                  {scanning
+                    ? "Items appear below as each photo finishes."
+                    : "Fix anything Claude misread, then file them. Low-confidence reads are flagged."}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
+                  disabled={scanning}
                   onClick={() => {
                     setRows(null);
-                    setPhotoErrors([]);
+                    setPhotoStates([]);
                   }}
                 >
                   Start over
                 </Button>
-                <Button onClick={fileItems} disabled={chosenCount === 0 || status === "filing"}>
+                <Button
+                  onClick={fileItems}
+                  disabled={chosenCount === 0 || scanning || status === "filing"}
+                >
                   {status === "filing" ? "Filing…" : `File ${chosenCount} into collection`}
                 </Button>
               </div>
             </div>
 
+            {photoStates.length > 0 && (scanning || failed.length > 0) && (
+              <section className="mt-7 rounded-[var(--radius-card)] bg-surface p-5">
+                <div className="mb-3 flex items-baseline justify-between">
+                  <p className="caps">
+                    {scanning ? `${reading} of ${photoStates.length} still reading` : "Photos"}
+                  </p>
+                  {scanning && (
+                    <p className="text-[13px] text-ink-soft tabular-nums">
+                      {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}
+                    </p>
+                  )}
+                </div>
+
+                <ul className="space-y-2">
+                  {photoStates.map((photo, index) => (
+                    <li key={index} className="flex items-center gap-3 text-[13px]">
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          photo.state === "done"
+                            ? "bg-accent"
+                            : photo.state === "error"
+                              ? "bg-accent/40"
+                              : "animate-pulse bg-ink-faint"
+                        }`}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-ink-soft">{photo.name}</span>
+                      <span className="shrink-0 text-ink-soft">
+                        {photo.state === "reading" && "reading…"}
+                        {photo.state === "done" &&
+                          `${photo.found} item${photo.found === 1 ? "" : "s"}`}
+                        {photo.state === "error" && "failed"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {scanning && (
+                  <p className="mt-4 text-[13px] leading-relaxed text-ink-faint">
+                    A photo with many items can take a minute or two — the model reads every label
+                    before answering.
+                  </p>
+                )}
+
+                {failed.length > 0 && (
+                  <ul className="mt-4 space-y-1.5 border-t border-line pt-4 text-[13px] text-ink-soft">
+                    {failed.map((photo, index) => (
+                      <li key={index}>
+                        <span className="text-ink">{photo.name}</span> — {photo.error}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
             <div className="mt-7 space-y-3">
               {rows.map((row) => (
                 <article
                   key={row.key}
-                  className={`lift flex gap-4 rounded-[var(--radius-card)] border bg-surface p-3.5 transition ${
-                    row.include ? "border-line" : "border-line/60 opacity-45"
+                  className={`lift flex gap-4 rounded-[var(--radius-card)] bg-surface p-3.5 transition-opacity ${
+                    row.include ? "" : "opacity-50"
                   }`}
                 >
                   <div className="photo-ground h-28 w-28 shrink-0 overflow-hidden rounded-[var(--radius-control)]">
                     {row.preview ? (
                       <img src={row.preview} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-ink-soft">
+                      <div className="flex h-full items-center justify-center text-xs text-ink-faint">
                         no crop
                       </div>
                     )}
@@ -353,10 +455,10 @@ export default function ScanStudio() {
                     />
                     <div className="col-span-2 flex items-center justify-between gap-3 text-xs text-ink-soft">
                       <span>
-                        {row.confidence < 0.45 ? "⚠ low confidence · " : ""}
+                        {row.confidence < 0.45 ? "Worth a check · " : ""}
                         {Math.round(row.confidence * 100)}% sure
                       </span>
-                      <label className="flex shrink-0 items-center gap-1.5">
+                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5">
                         <input
                           type="checkbox"
                           checked={row.include}
@@ -371,17 +473,6 @@ export default function ScanStudio() {
               ))}
             </div>
           </>
-        )}
-
-        {photoErrors.length > 0 && (
-          <div className="mt-6 rounded-[var(--radius-control)] bg-sand/60 px-4 py-3.5 text-sm">
-            <p className="caps mb-1.5">Some photos could not be read</p>
-            <ul className="list-inside list-disc space-y-1 text-ink-soft">
-              {photoErrors.map((message) => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
-          </div>
         )}
 
         {error && (

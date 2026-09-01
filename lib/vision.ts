@@ -28,16 +28,22 @@ the shade. Use null only when the item genuinely has no shade (a brush, a sponge
 audit trail for the fields above.
 - confidence: 0.0-1.0, your confidence in the brand and product identification specifically. Use \
 below 0.4 when you are working from shape alone.
-- box: a tight bounding box around the item in the ORIGINAL image, in integer coordinates \
-normalised to a 1000x1000 grid, where x0,y0 is the top-left and x1,y1 the bottom-right. Boxes are \
-used to crop each item out of the photo, so they must be tight and correct.
+- box: a tight bounding box around the item, in whole PIXELS of the image you were given, where \
+x0,y0 is the top-left corner and x1,y1 the bottom-right. The image's exact pixel dimensions are \
+stated in the request — use that coordinate space directly and do not rescale to any other range. \
+Boxes are used to crop each item out of the photo, so they must be tight and correct.
 
 Categories: ${CATEGORIES.join(", ")}.
 Conditions: ${CONDITIONS.join(", ")}.`;
 
-const USER_PROMPT = `Catalogue every beauty item in this photo. Work left to right, top to bottom, \
-so nothing is missed — including small items, items partly behind others, and tools or accessories. \
-Transcribe the labels rather than recalling the product from memory.`;
+function userPrompt(width: number, height: number): string {
+  return `This image is exactly ${width} pixels wide and ${height} pixels tall; give every box in \
+that pixel space.
+
+Catalogue every beauty item in this photo. Work left to right, top to bottom, so nothing is missed \
+— including small items, items partly behind others, and tools or accessories. Transcribe the \
+labels rather than recalling the product from memory.`;
+}
 
 export type ScanOutcome =
   | { ok: true; items: DetectedItem[] }
@@ -61,13 +67,40 @@ function makeClient(): Anthropic {
 /** Downscale to Claude's sweet spot so large camera photos stay fast and cheap. */
 export async function prepareForVision(
   buffer: Buffer
-): Promise<{ data: string; mediaType: "image/jpeg" }> {
+): Promise<{ data: string; mediaType: "image/jpeg"; width: number; height: number }> {
   const resized = await sharp(buffer, { failOn: "none" })
     .rotate()
     .resize({ width: 1568, height: 1568, fit: "inside", withoutEnlargement: true })
     .jpeg({ quality: 85 })
     .toBuffer();
-  return { data: resized.toString("base64"), mediaType: "image/jpeg" };
+  const meta = await sharp(resized).metadata();
+  return {
+    data: resized.toString("base64"),
+    mediaType: "image/jpeg",
+    width: meta.width ?? 0,
+    height: meta.height ?? 0,
+  };
+}
+
+/**
+ * Boxes come back in the pixel space of the image we sent; the catalogue stores
+ * them on a 0-1000 grid so a crop stays correct whatever the source resolution.
+ * Models vary in how well they respect a stated coordinate space, so anything
+ * degenerate or off-canvas falls back to the whole frame rather than a bad crop.
+ */
+function toNormalisedBox(box: DetectedItem["box"], width: number, height: number) {
+  if (!width || !height) return { x0: 0, y0: 0, x1: 1000, y1: 1000 };
+
+  const scale = (value: number, extent: number) =>
+    Math.min(1000, Math.max(0, Math.round((value / extent) * 1000)));
+
+  const x0 = scale(Math.min(box.x0, box.x1), width);
+  const x1 = scale(Math.max(box.x0, box.x1), width);
+  const y0 = scale(Math.min(box.y0, box.y1), height);
+  const y1 = scale(Math.max(box.y0, box.y1), height);
+
+  if (x1 - x0 < 10 || y1 - y0 < 10) return { x0: 0, y0: 0, x1: 1000, y1: 1000 };
+  return { x0, y0, x1, y1 };
 }
 
 export async function identifyItems(buffer: Buffer): Promise<ScanOutcome> {
@@ -103,7 +136,7 @@ export async function identifyItems(buffer: Buffer): Promise<ScanOutcome> {
               data: image.data,
             },
           },
-          { type: "text" as const, text: USER_PROMPT },
+          { type: "text" as const, text: userPrompt(image.width, image.height) },
         ],
       },
     ],
@@ -132,7 +165,11 @@ export async function identifyItems(buffer: Buffer): Promise<ScanOutcome> {
     if (!response.parsed_output) {
       return { ok: false, error: "Claude returned no structured result for this photo." };
     }
-    return { ok: true, items: response.parsed_output.items };
+    const items = response.parsed_output.items.map((item) => ({
+      ...item,
+      box: toNormalisedBox(item.box, image.width, image.height),
+    }));
+    return { ok: true, items };
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
       return { ok: false, error: "Anthropic rejected the API key. Check ANTHROPIC_API_KEY." };

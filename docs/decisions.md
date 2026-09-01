@@ -106,5 +106,13 @@ serving all deal with one format they can always read. Detection sniffs the ISO-
 brand rather than the file extension, because HEIC bytes turn up under `.png` names
 in the wild. Cost is ~2s per 24MP photo, all local.
 
+**Bounding boxes are requested in pixels, with the image's dimensions stated in the
+prompt, and normalised to a 0-1000 grid server-side.** Asking the model to rescale to
+an abstract grid is not reliably obeyed — Sonnet 5 returned raw pixel coordinates of
+the resized image while Opus 5 honoured the grid, and a pixel box that happens to fall
+under 1000 looks valid while cropping the wrong region entirely. State the real
+coordinate space, do the arithmetic here, and fall back to the whole frame if a box
+comes back degenerate.
+
 **Unreadable fields come back `null`, never guessed.** A null is more useful than a
 confident wrong brand, and it's what drives the "check me" flag.

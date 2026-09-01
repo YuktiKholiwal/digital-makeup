@@ -47,6 +47,17 @@ export function hasCredentials(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 }
 
+/**
+ * Identity-linked API keys must name the workspace each request acts in, which
+ * the SDK has no first-class option for — it goes on as a header.
+ */
+function makeClient(): Anthropic {
+  const workspace = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+  return new Anthropic(
+    workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {}
+  );
+}
+
 /** Downscale to Claude's sweet spot so large camera photos stay fast and cheap. */
 export async function prepareForVision(
   buffer: Buffer
@@ -68,7 +79,7 @@ export async function identifyItems(buffer: Buffer): Promise<ScanOutcome> {
     };
   }
 
-  const client = new Anthropic();
+  const client = makeClient();
   const image = await prepareForVision(buffer);
 
   const request = {
@@ -125,6 +136,16 @@ export async function identifyItems(buffer: Buffer): Promise<ScanOutcome> {
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
       return { ok: false, error: "Anthropic rejected the API key. Check ANTHROPIC_API_KEY." };
+    }
+    if (
+      error instanceof Anthropic.BadRequestError &&
+      /workspace/i.test(error.message)
+    ) {
+      return {
+        ok: false,
+        error:
+          "This API key is identity-linked, so it needs a workspace. Add ANTHROPIC_WORKSPACE_ID to .env.local and restart, or create a workspace-scoped key instead.",
+      };
     }
     if (error instanceof Anthropic.RateLimitError) {
       return { ok: false, error: "Rate limited by the Anthropic API. Try again in a moment." };

@@ -1,79 +1,99 @@
 @import "tailwindcss";
 
+/*
+ * Warm minimal — sand, cream, clay-rose. Light only, by design:
+ * a brand commits to one palette rather than following the OS.
+ * No pure white, no pure black anywhere.
+ */
 :root {
-  --bg: #f6f2ee;
-  --surface: #fffdfb;
-  --surface-2: #f1e9e3;
-  --ink: #221b19;
-  --muted: #7b6a62;
-  --line: #e6dbd3;
-  --accent: #a1524f;
-  --accent-soft: #f2e2dc;
-  --shadow: 0 1px 2px rgb(34 27 25 / 0.04), 0 8px 24px -12px rgb(34 27 25 / 0.18);
-}
+  --ground: #f7f2ec;
+  --surface: #fdfaf6;
+  --sand: #efe6db;
+  --sand-deep: #e6d9cb;
+  --line: #e5dace;
+  --ink: #33291f;
+  --ink-soft: #837465;
+  --ink-faint: #a89685;
+  --accent: #b87f6d;
+  --accent-soft: #f1e0d8;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #141110;
-    --surface: #1d1817;
-    --surface-2: #262020;
-    --ink: #f3ece8;
-    --muted: #a2918a;
-    --line: #302827;
-    --accent: #dd9086;
-    --accent-soft: #332624;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
-  }
+  --radius-card: 18px;
+  --radius-control: 12px;
+  --radius-sheet: 28px;
+
+  --lift: 0 1px 2px rgb(51 41 31 / 0.04), 0 14px 32px -18px rgb(51 41 31 / 0.16);
+  --lift-high: 0 2px 4px rgb(51 41 31 / 0.05), 0 28px 60px -28px rgb(51 41 31 / 0.24);
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 @theme inline {
-  --color-bg: var(--bg);
+  --color-ground: var(--ground);
   --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-ink: var(--ink);
-  --color-muted: var(--muted);
+  --color-sand: var(--sand);
+  --color-sand-deep: var(--sand-deep);
   --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-display);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-fraunces);
 }
 
 body {
-  background: var(--bg);
+  background: var(--ground);
   color: var(--ink);
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-.card-shadow {
-  box-shadow: var(--shadow);
-}
-
-.eyebrow {
+/* Small letterspaced caps — brand names, field labels, section markers. */
+.caps {
   font-size: 0.6875rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--ink-soft);
+  font-weight: 500;
 }
 
-/* Checkerboard behind product crops so pale packaging still reads. */
-.swatch-grid {
-  background-image: linear-gradient(45deg, var(--surface-2) 25%, transparent 25%),
-    linear-gradient(-45deg, var(--surface-2) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, var(--surface-2) 75%),
-    linear-gradient(-45deg, transparent 75%, var(--surface-2) 75%);
-  background-size: 16px 16px;
-  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+.display {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* The ground a product photo sits on: warm, slightly deeper than the card. */
+.photo-ground {
+  background: linear-gradient(170deg, #f4ece2 0%, #ece0d2 100%);
+}
+
+.lift {
+  box-shadow: var(--lift);
 }
 
 input,
 select,
-textarea {
+textarea,
+button {
+  font: inherit;
   color: inherit;
 }
 
 ::placeholder {
-  color: var(--muted);
-  opacity: 0.75;
+  color: var(--ink-faint);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

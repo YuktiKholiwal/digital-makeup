@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { CATEGORIES, Box } from "@/lib/catalog";
-import { ShadeDot, inputClass } from "./fields";
+import { Button, ShadeDot, inputClass } from "./ui";
 
 type Detection = {
   key: string;
@@ -155,13 +155,13 @@ export default function ScanStudio() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-ground/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-5 py-3.5">
-          <Link href="/" className="font-display text-2xl leading-none">
+          <Link href="/" className="display text-[26px] leading-none">
             Vanity
           </Link>
-          <span className="text-xs text-muted">/ add items</span>
-          <Link href="/" className="ml-auto text-sm text-muted transition hover:text-ink">
+          <span className="caps">Add items</span>
+          <Link href="/" className="ml-auto text-sm text-ink-soft transition hover:text-ink">
             Back to collection
           </Link>
         </div>
@@ -170,8 +170,8 @@ export default function ScanStudio() {
       <main className="mx-auto max-w-5xl px-5 py-8">
         {!rows ? (
           <>
-            <h1 className="font-display text-4xl leading-tight">Photograph your collection</h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
+            <h1 className="display text-[34px] leading-tight sm:text-[40px]">Photograph your collection</h1>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-soft">
               Lay items out on a plain surface with labels facing up — a whole drawer per photo is
               fine. Each item gets identified, cropped out of the photo, and filed into its own
               folder.
@@ -189,12 +189,12 @@ export default function ScanStudio() {
                 addFiles(event.dataTransfer.files);
               }}
               onClick={() => fileInput.current?.click()}
-              className={`mt-7 cursor-pointer rounded-2xl border-2 border-dashed px-6 py-14 text-center transition ${
-                dragging ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-accent/50"
+              className={`mt-7 cursor-pointer rounded-[var(--radius-card)] border-2 border-dashed px-6 py-16 text-center transition ${
+                dragging ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-accent/60"
               }`}
             >
-              <p className="font-display text-2xl">Drop photos here</p>
-              <p className="mt-2 text-sm text-muted">
+              <p className="display text-2xl">Drop photos here</p>
+              <p className="mt-2 text-sm text-ink-soft">
                 or click to choose · up to {MAX_PHOTOS} at a time
               </p>
               <input
@@ -217,7 +217,7 @@ export default function ScanStudio() {
                   {queue.map((entry, index) => (
                     <div
                       key={entry.url}
-                      className="group relative aspect-square overflow-hidden rounded-xl border border-line"
+                      className="group relative aspect-square overflow-hidden rounded-[var(--radius-control)] border border-line"
                     >
                       <img src={entry.url} alt="" className="h-full w-full object-cover" />
                       <button
@@ -233,17 +233,13 @@ export default function ScanStudio() {
                   ))}
                 </div>
 
-                <button
-                  onClick={scan}
-                  disabled={status === "scanning"}
-                  className="mt-6 rounded-lg bg-ink px-5 py-3 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-50"
-                >
+                <Button onClick={scan} disabled={status === "scanning"} className="mt-7 px-6 py-3.5">
                   {status === "scanning"
                     ? `Reading ${queue.length} photo${queue.length === 1 ? "" : "s"}…`
                     : `Identify items in ${queue.length} photo${queue.length === 1 ? "" : "s"}`}
-                </button>
+                </Button>
                 {status === "scanning" && (
-                  <p className="mt-3 text-sm text-muted">
+                  <p className="mt-3 text-sm text-ink-soft">
                     Claude is reading the labels. Busy photos take a little longer.
                   </p>
                 )}
@@ -254,30 +250,26 @@ export default function ScanStudio() {
           <>
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h1 className="font-display text-4xl leading-tight">
+                <h1 className="display text-[34px] leading-tight sm:text-[40px]">
                   Found {rows.length} item{rows.length === 1 ? "" : "s"}
                 </h1>
-                <p className="mt-2 text-sm text-muted">
+                <p className="mt-2 text-sm text-ink-soft">
                   Fix anything Claude misread, then file them. Low-confidence reads are flagged.
                 </p>
               </div>
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     setRows(null);
                     setPhotoErrors([]);
                   }}
-                  className="rounded-lg border border-line px-4 py-2.5 text-sm transition hover:bg-surface-2"
                 >
                   Start over
-                </button>
-                <button
-                  onClick={fileItems}
-                  disabled={chosenCount === 0 || status === "filing"}
-                  className="rounded-lg bg-ink px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-40"
-                >
+                </Button>
+                <Button onClick={fileItems} disabled={chosenCount === 0 || status === "filing"}>
                   {status === "filing" ? "Filing…" : `File ${chosenCount} into collection`}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -285,15 +277,15 @@ export default function ScanStudio() {
               {rows.map((row) => (
                 <article
                   key={row.key}
-                  className={`card-shadow flex gap-4 rounded-2xl border bg-surface p-3 transition ${
-                    row.include ? "border-line" : "border-line/50 opacity-45"
+                  className={`lift flex gap-4 rounded-[var(--radius-card)] border bg-surface p-3.5 transition ${
+                    row.include ? "border-line" : "border-line/60 opacity-45"
                   }`}
                 >
-                  <div className="swatch-grid h-28 w-28 shrink-0 overflow-hidden rounded-xl border border-line">
+                  <div className="photo-ground h-28 w-28 shrink-0 overflow-hidden rounded-[var(--radius-control)]">
                     {row.preview ? (
                       <img src={row.preview} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-muted">
+                      <div className="flex h-full items-center justify-center text-xs text-ink-soft">
                         no crop
                       </div>
                     )}
@@ -342,7 +334,7 @@ export default function ScanStudio() {
                       placeholder="Type"
                       onChange={(event) => update(row.key, { product_type: event.target.value })}
                     />
-                    <div className="col-span-2 flex items-center justify-between gap-3 text-xs text-muted">
+                    <div className="col-span-2 flex items-center justify-between gap-3 text-xs text-ink-soft">
                       <span>
                         {row.confidence < 0.45 ? "⚠ low confidence · " : ""}
                         {Math.round(row.confidence * 100)}% sure
@@ -365,9 +357,9 @@ export default function ScanStudio() {
         )}
 
         {photoErrors.length > 0 && (
-          <div className="mt-6 rounded-xl border border-line bg-surface-2/60 px-4 py-3 text-sm">
-            <p className="eyebrow mb-1.5">Some photos could not be read</p>
-            <ul className="list-inside list-disc space-y-1 text-muted">
+          <div className="mt-6 rounded-[var(--radius-control)] bg-sand/60 px-4 py-3.5 text-sm">
+            <p className="caps mb-1.5">Some photos could not be read</p>
+            <ul className="list-inside list-disc space-y-1 text-ink-soft">
               {photoErrors.map((message) => (
                 <li key={message}>{message}</li>
               ))}
@@ -376,7 +368,7 @@ export default function ScanStudio() {
         )}
 
         {error && (
-          <p className="mt-6 rounded-xl border border-accent/40 bg-accent-soft px-4 py-3 text-sm">
+          <p className="mt-6 rounded-[var(--radius-control)] bg-accent-soft px-4 py-3.5 text-sm">
             {error}
           </p>
         )}

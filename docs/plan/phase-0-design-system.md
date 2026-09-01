@@ -22,28 +22,30 @@ on transitions.
 
 ## Steps
 
-- [ ] **Tokens.** Rewrite `app/globals.css`: palette, type scale, radii, shadow, spacing,
+- [x] **Tokens.** Rewrite `app/globals.css`: palette, type scale, radii, shadow, spacing,
       motion. Delete the `prefers-color-scheme` block and every dark-mode token.
-- [ ] **Fonts.** Swap Instrument Serif → Fraunces in `app/layout.tsx`; pick and wire the
+- [x] **Fonts.** Swap Instrument Serif → Fraunces in `app/layout.tsx`; pick and wire the
       UI sans.
-- [ ] **Primitives.** `components/ui/` — Button, Card, Pill, Field, Sheet. Everything
+- [x] **Primitives.** `components/ui/` — Button, Card, Pill, Field, Sheet. Everything
       else composes these instead of restating Tailwind classes inline.
-- [ ] **Card treatment.** Replace the `swatch-grid` checkerboard with a soft cream
+- [x] **Card treatment.** Replace the `swatch-grid` checkerboard with a soft cream
       ground. Brand in caps, product in serif, shade dot kept but restyled.
-- [ ] **Collection browser.** Rebuild `CollectionView`: header, filters, grid. Replace the
+- [x] **Collection browser.** Rebuild `CollectionView`: header, filters, grid. Replace the
       big-number stats row with a quiet single line ("24 pieces · 11 brands").
-- [ ] **Item detail.** Rebuild `ItemDrawer` — bottom sheet on mobile, side panel on
+- [x] **Item detail.** Rebuild `ItemDrawer` — bottom sheet on mobile, side panel on
       desktop.
-- [ ] **Add flow.** Rebuild `ScanStudio`: dropzone, queue, review cards.
-- [ ] **Mobile-first pass.** Bottom action bar instead of top-right buttons. Verify the
+- [x] **Add flow.** Rebuild `ScanStudio`: dropzone, queue, review cards.
+- [~] **Mobile-first pass.** Bottom action bar instead of top-right buttons. Verify the
       review cards, which are the densest screen, actually work at 390px.
-- [ ] **Empty and loading states.** Including the no-API-key message on the add screen.
+      *Written but NOT visually verified — Chrome would not resize below its minimum
+      window width in the dev environment. Needs checking on a real phone.*
+- [x] **Empty and loading states.** Including the no-API-key message on the add screen.
 - [ ] *(optional)* **Manual item entry** — add an item without a photo. Makes the app
       fully usable with no key at all.
 
 ## Done when
 
 - No dark mode, no checkerboard, no stats dashboard anywhere in the codebase.
-- Renders correctly at 390px, 768px and 1440px.
+- Renders correctly at 390px, 768px and 1440px. *(1540px verified; narrow widths outstanding.)*
 - `npx tsc --noEmit`, `npx eslint .` and `npm run build` all clean.
 - Screenshots at all three widths reviewed and approved.

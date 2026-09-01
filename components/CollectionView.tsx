@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CATEGORIES, Item, displayName } from "@/lib/catalog";
 import ItemDrawer from "./ItemDrawer";
-import { ShadeDot } from "./fields";
+import { Chip, ShadeDot } from "./ui";
 
 const SORTS = {
   recent: "Recently added",
@@ -15,51 +15,41 @@ const SORTS = {
 
 type Sort = keyof typeof SORTS;
 
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="min-w-24">
-      <p className="font-display text-3xl leading-none">{value}</p>
-      <p className="eyebrow mt-1.5">{label}</p>
-    </div>
-  );
-}
-
 function ItemCard({ item, onOpen }: { item: Item; onOpen: () => void }) {
   const subtitle = [item.shadeName, item.finish].filter(Boolean).join(" · ");
   return (
     <button
       onClick={onOpen}
-      className="card-shadow group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-left transition hover:-translate-y-0.5 hover:border-accent/40"
+      className="lift group flex flex-col overflow-hidden rounded-[var(--radius-card)] bg-surface text-left transition-all duration-300 [transition-timing-function:var(--ease)] hover:-translate-y-1 hover:shadow-[var(--lift-high)]"
     >
-      <div className="swatch-grid relative aspect-4/5 w-full overflow-hidden">
+      <div className="photo-ground relative aspect-4/5 w-full overflow-hidden">
         {item.photo ? (
           <img
             src={`/api/media/${item.photo}`}
             alt={displayName(item)}
             loading="lazy"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-contain p-5 transition-transform duration-500 [transition-timing-function:var(--ease)] group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-muted">No photo</div>
+          <div className="flex h-full items-center justify-center text-xs text-ink-faint">
+            No photo
+          </div>
         )}
         {item.favorite && (
-          <span className="absolute top-2 right-2 rounded-full bg-surface/90 px-2 py-0.5 text-xs">
-            ★
-          </span>
-        )}
-        {item.confidence > 0 && item.confidence < 0.45 && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-surface/90 px-2 py-0.5 text-[10px] text-muted">
-            check me
-          </span>
+          <span className="absolute top-3 right-3 h-1.5 w-1.5 rounded-full bg-accent" />
         )}
       </div>
-      <div className="flex items-start gap-2.5 p-3">
-        <ShadeDot hex={item.shadeHex} size={22} />
-        <div className="min-w-0 flex-1">
-          <p className="eyebrow truncate">{item.brand || "Unbranded"}</p>
-          <p className="font-display truncate text-[17px] leading-snug">{displayName(item)}</p>
-          <p className="truncate text-xs text-muted">{subtitle || item.productType}</p>
+
+      <div className="flex flex-col gap-1 px-4 pt-3.5 pb-4">
+        <p className="caps truncate">{item.brand || "Unbranded"}</p>
+        <p className="display truncate text-[19px] leading-snug">{displayName(item)}</p>
+        <div className="mt-0.5 flex items-center gap-2">
+          {item.shadeHex && <ShadeDot hex={item.shadeHex} size={13} />}
+          <p className="truncate text-[13px] text-ink-soft">{subtitle || item.productType}</p>
         </div>
+        {item.confidence > 0 && item.confidence < 0.45 && (
+          <p className="mt-1 text-[11px] text-accent">Worth a check</p>
+        )}
       </div>
     </button>
   );
@@ -122,126 +112,120 @@ export default function CollectionView({ items: initial }: { items: Item[] }) {
   }, [items, query, category, brand, sort]);
 
   const open = items.find((item) => item.id === openId) ?? null;
-  const valued = items.filter((item) => typeof item.price === "number");
-  const total = valued.reduce((sum, item) => sum + (item.price ?? 0), 0);
+
+  if (items.length === 0) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
+        <p className="display text-[42px] leading-none">Vanity</p>
+        <div className="my-9 h-px w-14 bg-line" />
+        <h1 className="display text-[28px] leading-tight">Nothing catalogued yet</h1>
+        <p className="mt-4 text-[15px] leading-relaxed text-ink-soft">
+          Photograph your makeup — a whole drawer at a time is fine. Every item in the
+          frame is identified, cropped out, and filed into its own folder.
+        </p>
+        <Link
+          href="/add"
+          className="mt-9 rounded-[var(--radius-control)] bg-ink px-6 py-3.5 text-sm font-medium text-ground transition-colors duration-200 hover:bg-[#463a2d]"
+        >
+          Add your first photos
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-5 py-3.5">
-          <Link href="/" className="font-display text-2xl leading-none tracking-tight">
+    <div className="min-h-screen pb-28 sm:pb-16">
+      <header className="sticky top-0 z-30 border-b border-line/70 bg-ground/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-4 px-5 py-4 sm:px-8">
+          <Link href="/" className="display shrink-0 text-[26px] leading-none">
             Vanity
           </Link>
-          <span className="hidden text-xs text-muted sm:inline">
-            {items.length} item{items.length === 1 ? "" : "s"} catalogued
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search brand, shade, finish…"
-              className="w-44 rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:w-60 focus:border-accent focus:ring-2 focus:ring-accent/20 sm:w-56"
-            />
-            <Link
-              href="/add"
-              className="rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-bg transition hover:opacity-90"
-            >
-              Add photos
-            </Link>
-          </div>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search brand, shade, finish…"
+            className="ml-auto w-40 rounded-full border border-line bg-surface px-4 py-2 text-sm outline-none transition-all duration-300 [transition-timing-function:var(--ease)] placeholder:text-ink-faint focus:w-56 focus:border-accent sm:w-56 sm:focus:w-72"
+          />
+          <Link
+            href="/add"
+            className="hidden rounded-[var(--radius-control)] bg-ink px-4 py-2.5 text-sm font-medium text-ground transition-colors duration-200 hover:bg-[#463a2d] sm:block"
+          >
+            Add photos
+          </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-5 py-8">
-        {items.length === 0 ? (
-          <div className="mx-auto max-w-lg py-24 text-center">
-            <div className="swatch-grid mx-auto mb-6 flex h-28 w-28 items-center justify-center rounded-full border border-line">
-              <span className="text-3xl">◍</span>
-            </div>
-            <h1 className="font-display text-4xl leading-tight">Your vanity is empty</h1>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              Photograph your makeup — a whole drawer at a time is fine. Every item in the frame gets
-              identified, cropped out, and filed into its own folder under{" "}
-              <code className="text-xs">collection/</code>.
-            </p>
-            <Link
-              href="/add"
-              className="mt-7 inline-block rounded-lg bg-ink px-5 py-3 text-sm font-medium text-bg transition hover:opacity-90"
-            >
-              Add your first photos
-            </Link>
+      <main className="mx-auto max-w-[1400px] px-5 py-8 sm:px-8 sm:py-12">
+        <div className="mb-8 flex flex-wrap items-baseline justify-between gap-3">
+          <h1 className="display text-[32px] leading-none sm:text-[38px]">Your collection</h1>
+          <p className="text-[13px] text-ink-soft">
+            {items.length} {items.length === 1 ? "piece" : "pieces"} · {brands.length}{" "}
+            {brands.length === 1 ? "brand" : "brands"}
+          </p>
+        </div>
+
+        <div className="mb-8 flex flex-wrap items-center gap-2">
+          <div className="-mx-5 flex flex-1 gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 sm:pb-0">
+            {["All", ...categoriesInUse].map((option) => (
+              <Chip
+                key={option}
+                active={category === option}
+                onClick={() => setCategory(option)}
+              >
+                {option}
+              </Chip>
+            ))}
           </div>
-        ) : (
-          <>
-            <section className="mb-8 flex flex-wrap items-end gap-x-10 gap-y-5 border-b border-line pb-7">
-              <Stat label="Items" value={items.length} />
-              <Stat label="Brands" value={brands.length} />
-              <Stat label="Categories" value={categoriesInUse.length} />
-              <Stat label="Favourites" value={items.filter((item) => item.favorite).length} />
-              {valued.length > 0 && (
-                <Stat
-                  label={`Value · ${valued.length} priced`}
-                  value={`${Math.round(total).toLocaleString()}`}
-                />
-              )}
-            </section>
 
-            <section className="mb-6 flex flex-wrap items-center gap-2">
-              {["All", ...categoriesInUse].map((option) => (
-                <button
-                  key={option}
-                  onClick={() => setCategory(option)}
-                  className={`rounded-full border px-3.5 py-1.5 text-sm transition ${
-                    category === option
-                      ? "border-transparent bg-ink text-bg"
-                      : "border-line bg-surface text-muted hover:border-accent/40 hover:text-ink"
-                  }`}
-                >
+          <div className="flex shrink-0 items-center gap-2">
+            <select
+              value={brand}
+              onChange={(event) => setBrand(event.target.value)}
+              className="rounded-full border border-line bg-surface px-3.5 py-2 text-sm text-ink-soft outline-none"
+            >
+              <option value="All">All brands</option>
+              {brands.map((option) => (
+                <option key={option} value={option}>
                   {option}
-                </button>
+                </option>
               ))}
+            </select>
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value as Sort)}
+              className="rounded-full border border-line bg-surface px-3.5 py-2 text-sm text-ink-soft outline-none"
+            >
+              {Object.entries(SORTS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-              <div className="ml-auto flex items-center gap-2">
-                <select
-                  value={brand}
-                  onChange={(event) => setBrand(event.target.value)}
-                  className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm outline-none"
-                >
-                  <option value="All">All brands</option>
-                  {brands.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value as Sort)}
-                  className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm outline-none"
-                >
-                  {Object.entries(SORTS).map(([key, label]) => (
-                    <option key={key} value={key}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </section>
-
-            {visible.length === 0 ? (
-              <p className="py-20 text-center text-sm text-muted">
-                Nothing matches those filters.
-              </p>
-            ) : (
-              <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {visible.map((item) => (
-                  <ItemCard key={item.id} item={item} onOpen={() => setOpenId(item.id)} />
-                ))}
-              </section>
-            )}
-          </>
+        {visible.length === 0 ? (
+          <p className="py-24 text-center text-[15px] text-ink-soft">
+            Nothing matches those filters.
+          </p>
+        ) : (
+          <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 xl:grid-cols-5">
+            {visible.map((item) => (
+              <ItemCard key={item.id} item={item} onOpen={() => setOpenId(item.id)} />
+            ))}
+          </section>
         )}
       </main>
+
+      {/* Phone: the primary action lives within thumb reach. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line/70 bg-ground/90 px-5 py-3 backdrop-blur-md sm:hidden">
+        <Link
+          href="/add"
+          className="block rounded-[var(--radius-control)] bg-ink py-3.5 text-center text-sm font-medium text-ground"
+        >
+          Add photos
+        </Link>
+      </div>
 
       {open && (
         <ItemDrawer

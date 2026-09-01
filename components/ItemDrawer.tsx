@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CATEGORIES, CONDITIONS, Item, displayName } from "@/lib/catalog";
-import { SelectField, ShadeDot, TextAreaField, TextField, inputClass } from "./fields";
+import { Button, SelectField, TextAreaField, TextField, inputClass } from "./ui";
 
 type Props = {
   item: Item;
@@ -62,39 +62,45 @@ export default function ItemDrawer({ item, onClose, onSaved, onDeleted }: Props)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end">
       <button
         aria-label="Close"
-        className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[#33291f]/25 backdrop-blur-[3px]"
         onClick={onClose}
       />
-      <aside className="relative flex h-full w-full max-w-md flex-col border-l border-line bg-surface shadow-2xl">
-        <header className="flex items-start gap-3 border-b border-line px-5 py-4">
-          <ShadeDot hex={draft.shadeHex} size={36} />
+
+      {/* Bottom sheet on a phone, side panel on a desktop. */}
+      <aside className="relative flex max-h-[92vh] w-full flex-col rounded-t-[var(--radius-sheet)] bg-surface shadow-[var(--lift-high)] sm:h-full sm:max-h-none sm:max-w-md sm:rounded-none">
+        <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-sand-deep sm:hidden" />
+
+        <header className="flex items-start gap-3 px-6 pt-5 pb-4">
           <div className="min-w-0 flex-1">
-            <p className="eyebrow truncate">{draft.brand || "Unbranded"}</p>
-            <h2 className="font-display truncate text-xl leading-tight">{displayName(draft)}</h2>
+            <p className="caps truncate">{draft.brand || "Unbranded"}</p>
+            <h2 className="display mt-1 truncate text-[26px] leading-tight">
+              {displayName(draft)}
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="rounded-md px-2 py-1 text-lg leading-none text-muted transition hover:bg-surface-2 hover:text-ink"
+            aria-label="Close"
+            className="-mr-2 shrink-0 rounded-full px-2.5 py-1 text-xl leading-none text-ink-faint transition-colors hover:bg-sand hover:text-ink"
           >
             ×
           </button>
         </header>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+        <div className="flex-1 space-y-6 overflow-y-auto px-6 pb-6">
           {draft.photo && (
-            <div className="swatch-grid overflow-hidden rounded-xl border border-line">
+            <div className="photo-ground overflow-hidden rounded-[var(--radius-card)]">
               <img
                 src={`/api/media/${draft.photo}`}
                 alt={displayName(draft)}
-                className="mx-auto max-h-64 w-auto object-contain"
+                className="mx-auto max-h-60 w-auto object-contain p-4"
               />
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <TextField label="Brand" value={draft.brand ?? ""} onChange={(v) => set("brand", v || null)} />
             <TextField
               label="Product type"
@@ -109,20 +115,20 @@ export default function ItemDrawer({ item, onClose, onSaved, onDeleted }: Props)
             onChange={(v) => set("productName", v || null)}
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <TextField
               label="Shade"
               value={draft.shadeName ?? ""}
               onChange={(v) => set("shadeName", v || null)}
             />
             <div>
-              <span className="eyebrow mb-1.5 block">Shade colour</span>
+              <span className="caps mb-2 block">Shade colour</span>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
-                  value={/^#[0-9a-f]{6}$/i.test(draft.shadeHex ?? "") ? draft.shadeHex! : "#c08a80"}
+                  value={/^#[0-9a-f]{6}$/i.test(draft.shadeHex ?? "") ? draft.shadeHex! : "#c08d7e"}
                   onChange={(event) => set("shadeHex", event.target.value)}
-                  className="h-9 w-10 cursor-pointer rounded-lg border border-line bg-surface p-1"
+                  className="h-10 w-11 shrink-0 cursor-pointer rounded-[var(--radius-control)] border border-line bg-surface p-1"
                 />
                 <input
                   className={inputClass}
@@ -134,7 +140,7 @@ export default function ItemDrawer({ item, onClose, onSaved, onDeleted }: Props)
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <SelectField
               label="Category"
               value={draft.category}
@@ -149,7 +155,7 @@ export default function ItemDrawer({ item, onClose, onSaved, onDeleted }: Props)
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             <TextField label="Finish" value={draft.finish ?? ""} onChange={(v) => set("finish", v || null)} />
             <TextField label="Size" value={draft.size ?? ""} onChange={(v) => set("size", v || null)} />
             <TextField
@@ -159,7 +165,7 @@ export default function ItemDrawer({ item, onClose, onSaved, onDeleted }: Props)
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <TextField
               label="Bought on"
               value={draft.purchasedOn ?? ""}
@@ -178,17 +184,14 @@ export default function ItemDrawer({ item, onClose, onSaved, onDeleted }: Props)
             label="Tags"
             value={draft.tags.join(", ")}
             onChange={(v) =>
-              set(
-                "tags",
-                v.split(",").map((tag) => tag.trim()).filter(Boolean)
-              )
+              set("tags", v.split(",").map((tag) => tag.trim()).filter(Boolean))
             }
             placeholder="everyday, travel kit"
           />
 
           <TextAreaField label="Notes" value={draft.notes ?? ""} onChange={(v) => set("notes", v || null)} />
 
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex cursor-pointer items-center gap-2.5 text-[15px]">
             <input
               type="checkbox"
               checked={draft.favorite}
@@ -199,40 +202,41 @@ export default function ItemDrawer({ item, onClose, onSaved, onDeleted }: Props)
           </label>
 
           {draft.visibleText && (
-            <details className="rounded-lg border border-line bg-surface-2/50 px-3 py-2 text-sm">
-              <summary className="cursor-pointer text-muted">Text read off the packaging</summary>
-              <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed">{draft.visibleText}</p>
+            <details className="rounded-[var(--radius-control)] bg-sand/60 px-4 py-3 text-sm">
+              <summary className="cursor-pointer text-ink-soft">
+                Text read off the packaging
+              </summary>
+              <p className="mt-2.5 text-[13px] leading-relaxed whitespace-pre-wrap">
+                {draft.visibleText}
+              </p>
             </details>
           )}
 
-          <div className="space-y-1 border-t border-line pt-4 text-xs text-muted">
+          <div className="space-y-1.5 border-t border-line pt-5 text-[12px] leading-relaxed text-ink-faint">
             <p>
-              Filed at <code className="text-[11px]">collection/{item.dir}</code>
+              Filed at <span className="text-ink-soft">collection/{item.dir}</span>
             </p>
             <p>
-              Added {new Date(item.addedAt).toLocaleDateString()} · identification confidence{" "}
-              {Math.round(item.confidence * 100)}%
+              Added {new Date(item.addedAt).toLocaleDateString()} · identified with{" "}
+              {Math.round(item.confidence * 100)}% confidence
             </p>
           </div>
         </div>
 
-        {error && <p className="border-t border-line px-5 py-2 text-sm text-accent">{error}</p>}
+        {error && <p className="px-6 pb-2 text-sm text-accent">{error}</p>}
 
-        <footer className="flex items-center gap-2 border-t border-line px-5 py-4">
-          <button
-            onClick={save}
-            disabled={!dirty || saving}
-            className="flex-1 rounded-lg bg-ink px-4 py-2.5 text-sm font-medium text-bg transition hover:opacity-90 disabled:opacity-40"
-          >
+        <footer className="flex items-center gap-2.5 border-t border-line bg-surface px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Button onClick={save} disabled={!dirty || saving} className="flex-1">
             {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => (confirmDelete ? remove() : setConfirmDelete(true))}
             disabled={saving}
-            className="rounded-lg border border-line px-4 py-2.5 text-sm text-accent transition hover:bg-accent-soft disabled:opacity-40"
+            className={confirmDelete ? "!text-accent" : ""}
           >
             {confirmDelete ? "Really delete?" : "Delete"}
-          </button>
+          </Button>
         </footer>
       </aside>
     </div>

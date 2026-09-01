@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Your catalogued items and original photos — personal data, keep it out of git.
+collection/
+.env.local

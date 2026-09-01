@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cropToDataUrl } from "@/lib/crop";
+import { normalizeImage } from "@/lib/decode";
 import { saveSource } from "@/lib/store";
 import { hasCredentials, identifyItems } from "@/lib/vision";
 
@@ -43,10 +44,29 @@ export async function POST(request: NextRequest) {
 
   const results = await Promise.all(
     photos.map(async (photo) => {
-      const buffer = Buffer.from(await photo.arrayBuffer());
+      const raw = Buffer.from(await photo.arrayBuffer());
+
+      // iPhone HEIC becomes JPEG here so vision, cropping and serving all
+      // work from a format every downstream step can read.
+      let buffer: Buffer;
+      let converted = false;
+      try {
+        ({ buffer, converted } = await normalizeImage(raw));
+      } catch (error) {
+        return {
+          photo: photo.name,
+          source: null,
+          error: error instanceof Error ? error.message : "Unreadable image.",
+          detections: [],
+        };
+      }
+
       let source: string;
       try {
-        source = await saveSource(buffer, photo.name || "photo.jpg");
+        const name = converted
+          ? (photo.name || "photo").replace(/\.(heic|heif)$/i, "") + ".jpg"
+          : photo.name || "photo.jpg";
+        source = await saveSource(buffer, name);
       } catch (error) {
         console.error("Could not store source photo:", error);
         return { photo: photo.name, source: null, error: "Could not store this photo.", detections: [] };

@@ -89,5 +89,12 @@ pure white and pure black.
 rebuilt by walking the folder tree, so the collection can be moved, renamed, synced or
 hand-edited freely. Keep it that way — it's why the data outlives the app.
 
+**HEIC is decoded at ingest, not downstream.** iPhones shoot HEIC by default, and
+the prebuilt libheif bundled with sharp has no HEVC decoder — sharp reads AVIF but
+not HEIC. `lib/decode.ts` converts to JPEG on the way in, so vision, cropping and
+serving all deal with one format they can always read. Detection sniffs the ISO-BMFF
+brand rather than the file extension, because HEIC bytes turn up under `.png` names
+in the wild. Cost is ~2s per 24MP photo, all local.
+
 **Unreadable fields come back `null`, never guessed.** A null is more useful than a
 confident wrong brand, and it's what drives the "check me" flag.

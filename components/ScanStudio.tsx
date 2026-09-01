@@ -200,7 +200,7 @@ export default function ScanStudio() {
               <input
                 ref={fileInput}
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 multiple
                 capture="environment"
                 className="hidden"
@@ -219,7 +219,24 @@ export default function ScanStudio() {
                       key={entry.url}
                       className="group relative aspect-square overflow-hidden rounded-[var(--radius-control)] border border-line"
                     >
-                      <img src={entry.url} alt="" className="h-full w-full object-cover" />
+                      {/* Chrome cannot render HEIC, so fall back to the name. */}
+                      <img
+                        src={entry.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                          event.currentTarget.parentElement
+                            ?.querySelector("[data-fallback]")
+                            ?.classList.remove("hidden");
+                        }}
+                      />
+                      <span
+                        data-fallback
+                        className="absolute inset-0 hidden items-center justify-center bg-sand px-2 text-center text-[11px] break-all text-ink-soft [&:not(.hidden)]:flex"
+                      >
+                        {entry.file.name}
+                      </span>
                       <button
                         onClick={(event) => {
                           event.stopPropagation();

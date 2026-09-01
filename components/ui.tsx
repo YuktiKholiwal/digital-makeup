@@ -20,17 +20,22 @@ export function Button({
   className?: string;
   type?: "button" | "submit";
 }) {
+  // Disabled states recolour rather than fade: dropping a dark button to 40%
+  // opacity takes its label down with it and the text disappears.
   const variants = {
-    primary: "bg-ink text-ground hover:bg-[#463a2d]",
-    quiet: "bg-sand text-ink hover:bg-sand-deep",
-    ghost: "border border-line bg-transparent text-ink-soft hover:bg-sand hover:text-ink",
+    primary:
+      "bg-ink text-ground enabled:hover:bg-[#463a2d] disabled:bg-sand disabled:text-ink-soft",
+    quiet:
+      "bg-sand text-ink enabled:hover:bg-sand-deep disabled:bg-sand/60 disabled:text-ink-faint",
+    ghost:
+      "border border-line bg-transparent text-ink-soft enabled:hover:bg-sand enabled:hover:text-ink disabled:text-ink-faint",
   };
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-medium transition-all duration-200 [transition-timing-function:var(--ease)] disabled:cursor-not-allowed disabled:opacity-40 ${variants[variant]} ${className}`}
+      className={`rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-medium transition-all duration-200 [transition-timing-function:var(--ease)] disabled:cursor-not-allowed ${variants[variant]} ${className}`}
     >
       {children}
     </button>

@@ -78,6 +78,16 @@ rounded corners, generous air, gentle shadows, quiet sans with a serif accent.
 **No dark mode.** Following the system theme is the tell of a generic app. A luxury
 brand commits to one palette and controls it completely.
 
+**Everything custom in `globals.css` lives inside a cascade layer.** Unlayered CSS
+outranks every layered rule regardless of specificity, and Tailwind puts all its
+utilities in `@layer utilities`. A single unlayered `button { color: inherit }`
+silently beat every `text-*` utility on buttons, inputs, selects and textareas —
+which is how the primary button ended up rendering its label in the same colour as
+its background. Never add a bare element selector to that file.
+
+**Disabled controls recolour, they do not fade.** `opacity-40` on a dark button
+takes the label down with it and the text vanishes.
+
 **Things that read as generic and are banned:** checkerboard behind product photos
 (that's an image editor), big-number stat dashboards (that's analytics), high-contrast
 pill filters with hard black active states, decorative glyphs standing in for icons,
